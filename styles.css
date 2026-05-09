@@ -1,0 +1,184 @@
+/* ═══════════════════════════════════════════════════════════
+   RiverVault Dashboard — based on tempest's start.page
+   Glass card grid with live widgets
+   ═══════════════════════════════════════════════════════════ */
+
+/* Force ALL parent containers transparent when dashboard is showing */
+.workspace-leaf-content[data-type="rivervault-dashboard"],
+.workspace-leaf-content[data-type="rivervault-dashboard"] .view-content,
+.workspace-leaf:has([data-type="rivervault-dashboard"]),
+.workspace-tabs:has([data-type="rivervault-dashboard"]) {
+  background: transparent !important;
+}
+
+.rv-dashboard {
+  background: transparent !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0 !important;
+  font-family: 'Outfit', 'JetBrainsMono Nerd Font', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-hover: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.055);
+  --glass-blur: blur(18px) saturate(140%);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  --text-1: rgba(255,255,255,0.90);
+  --text-2: rgba(255,255,255,0.38);
+  --text-3: rgba(255,255,255,0.18);
+  --accent: #0ed2f7;
+  --accent-dim: rgba(14,210,247,0.5);
+  --bar-cpu: #5eead4;
+  --bar-ram: #f87171;
+  --bar-temp: #facc15;
+  --gap: 10px;
+  --pad: 16px;
+}
+
+.rv-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-auto-rows: min-content;
+  gap: var(--gap);
+  padding: 24px;
+  max-width: 100%;
+}
+
+.rv-card {
+  background: var(--glass-bg);
+  border: 1px solid rgba(14, 210, 247, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  padding: var(--pad);
+  display: flex;
+  flex-direction: column;
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+  overflow: hidden;
+}
+
+.rv-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: rgba(255,255,255,0.09);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.42), 0 3px 10px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.rv-card-title {
+  font-size: 10px; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px;
+}
+
+/* Clock */
+.rv-clock-time { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 300; color: var(--text-1); line-height: 1; font-variant-numeric: tabular-nums; }
+.rv-clock-date { font-size: 13px; font-weight: 500; color: var(--text-1); opacity: 0.75; margin-top: 5px; }
+.rv-clock-day { font-size: 10px; color: var(--text-2); letter-spacing: 0.07em; text-transform: uppercase; }
+.rv-clock-greeting { font-size: 14px; color: var(--accent); font-weight: 600; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+/* Pomodoro */
+.rv-pomo { grid-column: 2; grid-row: span 2; }
+.rv-pomo-ring { width: 160px; height: 160px; margin: 12px auto; border-radius: 50%; border: 3px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; flex-direction: column; }
+.rv-pomo-time { font-family: 'DM Mono', monospace; font-size: 36px; font-weight: 300; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.rv-pomo-mode { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+.rv-pomo-tabs { display: flex; gap: 6px; justify-content: center; margin: 12px 0; }
+.rv-pomo-tab { padding: 6px 16px; border-radius: var(--radius-sm); font-size: 12px; color: var(--text-2); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.rv-pomo-tab:hover { background: rgba(255,255,255,0.08); color: var(--text-1); }
+.rv-pomo-tab.active { background: rgba(14,210,247,0.12); color: var(--accent); border-color: rgba(14,210,247,0.2); }
+.rv-pomo-controls { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.rv-pomo-btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 12px; color: var(--text-1); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: inherit; }
+.rv-pomo-btn:hover { background: rgba(255,255,255,0.08); }
+.rv-pomo-btn.primary { background: rgba(14,210,247,0.12); border-color: rgba(14,210,247,0.2); }
+.rv-pomo-status { text-align: center; font-size: 11px; color: var(--text-2); margin-top: 8px; }
+.rv-pomo-config { display: flex; gap: 12px; justify-content: center; margin-top: 8px; font-size: 11px; color: var(--text-2); align-items: center; }
+.rv-pomo-config input { width: 40px; text-align: center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text-1); padding: 2px; font-family: inherit; font-size: 12px; }
+.rv-pomo-goal-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.rv-pomo-goal-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s; width: 0; }
+.rv-pomo-goal-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-3); margin-top: 4px; }
+
+/* Tasks */
+.rv-task-list { display: flex; flex-direction: column; gap: 4px; }
+.rv-task-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--text-1); cursor: pointer; }
+.rv-task-check { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.2); flex-shrink: 0; transition: all 0.15s; }
+.rv-task-item.done .rv-task-check { background: var(--accent); border-color: var(--accent); }
+.rv-task-item.done .rv-task-text { text-decoration: line-through; opacity: 0.4; }
+.rv-task-input { width: 100%; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-md); color: var(--text-1); font-size: 12px; font-family: inherit; }
+.rv-task-input::placeholder { color: var(--text-3); }
+
+/* System */
+.rv-sys-rows { display: flex; flex-direction: column; gap: 10px; }
+.rv-sys-row { display: flex; flex-direction: column; gap: 4px; }
+.rv-sys-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); }
+.rv-sys-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+.rv-sys-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.rv-sys-fill { height: 100%; border-radius: 2px; transition: width 0.5s; width: 0; }
+.rv-fill-cpu { background: var(--bar-cpu); }
+.rv-fill-ram { background: var(--bar-ram); }
+.rv-fill-temp { background: var(--bar-temp); }
+
+/* Notes */
+.rv-notes-area { width: 100%; min-height: 80px; padding: 10px; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-md); color: var(--text-1); font-size: 12px; font-family: inherit; resize: vertical; }
+.rv-notes-area::placeholder { color: var(--text-3); }
+
+/* Bookmarks */
+.rv-bookmark-list { display: flex; flex-direction: column; gap: 4px; }
+.rv-bookmark-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; font-size: 13px; color: var(--text-1); text-decoration: none; }
+.rv-bookmark-item:hover { background: rgba(255,255,255,0.06); }
+
+/* CTF */
+.rv-ctf { grid-column: 2; }
+.rv-ctf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rv-ctf-link { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.15s; text-decoration: none; color: var(--text-1); font-size: 11px; }
+.rv-ctf-link:hover { background: rgba(14,210,247,0.08); border-color: rgba(14,210,247,0.15); color: var(--accent); }
+
+/* Recent */
+.rv-recent { grid-column: 1 / 3; }
+.rv-recent-list { display: flex; flex-direction: column; gap: 2px; }
+.rv-recent-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; }
+.rv-recent-item:hover { background: rgba(255,255,255,0.06); }
+.rv-recent-name { flex: 1; font-size: 13px; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-recent-time { font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* Scrollbar */
+.rv-dashboard::-webkit-scrollbar { width: 4px; }
+.rv-dashboard::-webkit-scrollbar-track { background: transparent; }
+.rv-dashboard::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+
+/* Vault Stats */
+.rv-vault-stats { grid-column: 2; }
+.rv-vstats-grid { display: flex; gap: 20px; justify-content: center; }
+.rv-vstat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rv-vstat-num { font-size: 28px; font-weight: 700; color: rgba(14,210,247,0.8); font-variant-numeric: tabular-nums; }
+.rv-vstat-label { font-size: 10px; color: rgba(255,255,255,0.38); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Folders */
+.rv-folders { grid-column: 3; }
+.rv-folder-list { display: flex; flex-direction: column; gap: 2px; }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .rv-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .rv-pomo, .rv-vault-stats, .rv-ctf, .rv-recent, .rv-folders {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+}
+
+@media (max-width: 1000px) and (min-width: 701px) {
+  .rv-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .rv-pomo {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+  .rv-recent {
+    grid-column: 1 / -1 !important;
+  }
+  .rv-vault-stats {
+    grid-column: auto !important;
+  }
+}

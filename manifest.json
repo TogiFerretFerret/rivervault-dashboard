@@ -1,0 +1,9 @@
+{
+  "id": "rivervault-dashboard",
+  "name": "RiverVault Dashboard",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Interactive HTML/JS dashboard homepage for RiverVault",
+  "author": "rivercodes",
+  "isDesktopOnly": false
+}
