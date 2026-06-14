@@ -30,8 +30,8 @@
   --text-1: rgba(255,255,255,0.90);
   --text-2: rgba(255,255,255,0.38);
   --text-3: rgba(255,255,255,0.18);
-  --accent: #0ed2f7;
-  --accent-dim: rgba(14,210,247,0.5);
+  --accent: var(--rv-accent, #0ed2f7);
+  --accent-dim: var(--rv-accent-dim, rgba(14,210,247,0.5));
   --bar-cpu: #5eead4;
   --bar-ram: #f87171;
   --bar-temp: #facc15;
@@ -50,7 +50,7 @@
 
 .rv-card {
   background: var(--glass-bg);
-  border: 1px solid rgba(14, 210, 247, 0.08);
+  border: var(--rv-panel-border, 1px solid color-mix(in srgb, var(--accent) 8%, transparent));
   border-radius: var(--radius-lg);
   box-shadow: none;
   padding: var(--pad);
@@ -85,11 +85,11 @@
 .rv-pomo-tabs { display: flex; gap: 6px; justify-content: center; margin: 12px 0; }
 .rv-pomo-tab { padding: 6px 16px; border-radius: var(--radius-sm); font-size: 12px; color: var(--text-2); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.15s; font-family: inherit; }
 .rv-pomo-tab:hover { background: rgba(255,255,255,0.08); color: var(--text-1); }
-.rv-pomo-tab.active { background: rgba(14,210,247,0.12); color: var(--accent); border-color: rgba(14,210,247,0.2); }
+.rv-pomo-tab.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
 .rv-pomo-controls { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
 .rv-pomo-btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 12px; color: var(--text-1); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: inherit; }
 .rv-pomo-btn:hover { background: rgba(255,255,255,0.08); }
-.rv-pomo-btn.primary { background: rgba(14,210,247,0.12); border-color: rgba(14,210,247,0.2); }
+.rv-pomo-btn.primary { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
 .rv-pomo-status { text-align: center; font-size: 11px; color: var(--text-2); margin-top: 8px; }
 .rv-pomo-config { display: flex; gap: 12px; justify-content: center; margin-top: 8px; font-size: 11px; color: var(--text-2); align-items: center; }
 .rv-pomo-config input { width: 40px; text-align: center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text-1); padding: 2px; font-family: inherit; font-size: 12px; }
@@ -130,7 +130,7 @@
 .rv-ctf { grid-column: 2; }
 .rv-ctf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .rv-ctf-link { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.15s; text-decoration: none; color: var(--text-1); font-size: 11px; }
-.rv-ctf-link:hover { background: rgba(14,210,247,0.08); border-color: rgba(14,210,247,0.15); color: var(--accent); }
+.rv-ctf-link:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); border-color: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
 
 /* Recent */
 .rv-recent { grid-column: 1 / 3; }
@@ -145,11 +145,73 @@
 .rv-dashboard::-webkit-scrollbar-track { background: transparent; }
 .rv-dashboard::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
 
+/* Lyrics Widget */
+.rv-lyrics {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.rv-lyrics-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.rv-lyrics-line {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease, text-shadow 0.2s ease;
+  font-family: inherit;
+  line-height: 1.4;
+  min-height: 1.4em;
+  will-change: opacity, transform;
+}
+
+.rv-lyrics-line.lyric-updating {
+  opacity: 0 !important;
+  transform: translateY(-4px) scale(0.96) !important;
+}
+
+.rv-lyrics-line.prior {
+  font-size: 12px;
+  color: var(--text-2);
+  opacity: 0.45;
+  transform: scale(0.95);
+}
+
+.rv-lyrics-line.active {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+  padding: 4px 8px;
+}
+
+.rv-lyrics-line.active.rv-lyrics-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  font-style: italic;
+  font-weight: normal;
+  text-shadow: none;
+  opacity: 0.8;
+}
+
+.rv-lyrics-line.next {
+  font-size: 12px;
+  color: var(--text-2);
+  opacity: 0.7;
+  transform: scale(0.95);
+}
+
 /* Vault Stats */
 .rv-vault-stats { grid-column: 2; }
 .rv-vstats-grid { display: flex; gap: 20px; justify-content: center; }
 .rv-vstat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.rv-vstat-num { font-size: 28px; font-weight: 700; color: rgba(14,210,247,0.8); font-variant-numeric: tabular-nums; }
+.rv-vstat-num { font-size: 28px; font-weight: 700; color: color-mix(in srgb, var(--accent) 80%, transparent); font-variant-numeric: tabular-nums; }
 .rv-vstat-label { font-size: 10px; color: rgba(255,255,255,0.38); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* Folders */

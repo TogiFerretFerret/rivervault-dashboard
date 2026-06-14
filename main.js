@@ -1,8 +1,149 @@
 const { Plugin, ItemView } = require("obsidian");
+const net = require("net");
+const { spawn } = require("child_process");
 const VIEW_TYPE = "rivervault-dashboard";
 
+class LyricsManager {
+  constructor(onLyricsUpdate) {
+    this.onLyricsUpdate = onLyricsUpdate;
+    this.socket = null;
+    this.lrcsncProcess = null;
+    this.reconnectTimer = null;
+    this.isSocketAlive = false;
+    this.socketBuffer = "";
+    this.lrcsncBuffer = "";
+  }
+
+  start() {
+    this.connectSocket();
+  }
+
+  connectSocket() {
+    this.cleanupSocket();
+    this.cleanupLrcsnc();
+
+    const socketPath = "/tmp/lazyspotify-lyrics.sock";
+    
+    this.socket = net.createConnection({ path: socketPath });
+    
+    this.socket.on("connect", () => {
+      this.isSocketAlive = true;
+      this.socketBuffer = "";
+      this.cleanupLrcsnc();
+    });
+
+    this.socket.on("data", (data) => {
+      this.socketBuffer += data.toString();
+      let lines = this.socketBuffer.split("\n");
+      this.socketBuffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          this.handleUpdate(obj);
+        } catch (e) {}
+      }
+    });
+
+    const handleErrorOrClose = () => {
+      if (this.isSocketAlive) {
+        this.isSocketAlive = false;
+        this.startLrcsnc();
+      } else if (!this.lrcsncProcess) {
+        this.startLrcsnc();
+      }
+      this.scheduleReconnect();
+    };
+
+    this.socket.on("error", handleErrorOrClose);
+    this.socket.on("close", handleErrorOrClose);
+  }
+
+  scheduleReconnect() {
+    if (this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.isSocketAlive) {
+        this.connectSocket();
+      }
+    }, 5000);
+  }
+
+  startLrcsnc() {
+    this.cleanupLrcsnc();
+    if (this.isSocketAlive) return;
+
+    this.lrcsncProcess = spawn("lrcsnc", ["--no-log"]);
+    this.lrcsncBuffer = "";
+
+    this.lrcsncProcess.stdout.on("data", (data) => {
+      if (this.isSocketAlive) {
+        this.cleanupLrcsnc();
+        return;
+      }
+      this.lrcsncBuffer += data.toString();
+      let lines = this.lrcsncBuffer.split("\n");
+      this.lrcsncBuffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          this.handleUpdate(obj);
+        } catch (e) {}
+      }
+    });
+
+    this.lrcsncProcess.on("error", () => {});
+
+    this.lrcsncProcess.on("close", () => {
+      if (!this.isSocketAlive) {
+        setTimeout(() => this.startLrcsnc(), 5000);
+      }
+    });
+  }
+
+  handleUpdate(obj) {
+    if (obj.playing === false) {
+      this.onLyricsUpdate({ prior: "", current: "", next: "" });
+      return;
+    }
+    const current = obj.line_text || obj.text || "";
+    const prior = obj.prior || "";
+    const next = obj.next || "";
+    this.onLyricsUpdate({ prior, current, next });
+  }
+
+  cleanupSocket() {
+    if (this.socket) {
+      this.socket.destroy();
+      this.socket = null;
+    }
+  }
+
+  cleanupLrcsnc() {
+    if (this.lrcsncProcess) {
+      this.lrcsncProcess.kill();
+      this.lrcsncProcess = null;
+    }
+  }
+
+  destroy() {
+    this.cleanupSocket();
+    this.cleanupLrcsnc();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+}
+
 class DashboardView extends ItemView {
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this._intervals = []; }
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+    this._intervals = [];
+    this.lyricsManager = null;
+  }
   getViewType() { return VIEW_TYPE; }
   getDisplayText() { return "Dashboard"; }
   getIcon() { return "layout-dashboard"; }
@@ -58,6 +199,15 @@ class DashboardView extends ItemView {
           <div class="rv-sys-row"><div class="rv-sys-header"><span>CPU</span><span class="rv-sys-val" id="rv-cpu-val">—</span></div><div class="rv-sys-bar"><div class="rv-sys-fill rv-fill-cpu" id="rv-cpu-bar"></div></div></div>
           <div class="rv-sys-row"><div class="rv-sys-header"><span>RAM</span><span class="rv-sys-val" id="rv-ram-val">—</span></div><div class="rv-sys-bar"><div class="rv-sys-fill rv-fill-ram" id="rv-ram-bar"></div></div></div>
           <div class="rv-sys-row"><div class="rv-sys-header"><span>Temp</span><span class="rv-sys-val" id="rv-temp-val">—</span></div><div class="rv-sys-bar"><div class="rv-sys-fill rv-fill-temp" id="rv-temp-bar"></div></div></div>
+        </div>
+      </div>
+
+      <div class="rv-card rv-lyrics" id="rv-lyrics-card">
+        <div class="rv-card-title">Lyrics</div>
+        <div class="rv-lyrics-container">
+          <div class="rv-lyrics-line prior" id="rv-lyrics-prior"></div>
+          <div class="rv-lyrics-line active rv-lyrics-empty" id="rv-lyrics-active">No lyrics playing</div>
+          <div class="rv-lyrics-line next" id="rv-lyrics-next"></div>
         </div>
       </div>
 
@@ -260,9 +410,48 @@ class DashboardView extends ItemView {
       POMO_DURATIONS.work = parseInt(e.target.value) || 25;
       if (pomoState.mode === "work" && !pomoState.running) { pomoState.seconds = POMO_DURATIONS.work * 60; updatePomo(); }
     });
+
+    // Lyrics integration
+    this.lyricsManager = new LyricsManager(({ prior, current, next }) => {
+      const elPrior = el("rv-lyrics-prior");
+      const elActive = el("rv-lyrics-active");
+      const elNext = el("rv-lyrics-next");
+      if (!elActive) return;
+
+      const animateText = (element, newText, isEmptyActive = false) => {
+        if (!element) return;
+        const oldText = element.textContent;
+        if (oldText === newText) return;
+
+        element.classList.add("lyric-updating");
+        
+        setTimeout(() => {
+          element.textContent = newText;
+          if (isEmptyActive) {
+            if (!newText || newText === "No lyrics playing") {
+              element.classList.add("rv-lyrics-empty");
+            } else {
+              element.classList.remove("rv-lyrics-empty");
+            }
+          }
+          element.classList.remove("lyric-updating");
+        }, 150);
+      };
+
+      const activeText = current || "No lyrics playing";
+      animateText(elPrior, prior);
+      animateText(elActive, activeText, true);
+      animateText(elNext, next);
+    });
+    this.lyricsManager.start();
   }
 
-  async onClose() { this._intervals.forEach(i => clearInterval(i)); }
+  async onClose() {
+    this._intervals.forEach(i => clearInterval(i));
+    if (this.lyricsManager) {
+      this.lyricsManager.destroy();
+    }
+  }
 }
 
 module.exports = class RiverVaultDashboard extends Plugin {
